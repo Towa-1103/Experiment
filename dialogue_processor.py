@@ -8,10 +8,11 @@ ANALYSIS_PROMPT = """以下のLINEの会話ログを分析し、指定のJSONフ
 {dialogue}
 
 【判定ルール】
-1. sender_id: 会話相手を推測して分類 ("friend", "parent", "professor", "other" のいずれか)
-2. text: この会話で決まったことや話した内容の客観的要約（30〜60文字程度）
-3. past_reply: 会話内での「自分」の発言（口調模倣用、なければ空文字）
-4. importance: 記憶の重要度（1〜10の整数）
+1. timestamp: 会話ログから日付・時刻を読み取り "YYYY-MM-DD HH:MM:SS" 形式で出力（年が不明なら2026年、時刻のみなら日付を補完、完全に不明なら空文字）
+2. sender_id: 会話相手を推測して分類 ("friend", "parent", "professor", "other" のいずれか)
+3. text: この会話で決まったことや話した内容の客観的要約（30〜60文字程度）
+4. past_reply: 会話内での「自分」の発言（口調模倣用、なければ空文字）
+5. importance: 記憶の重要度（1〜10の整数）
    - 1〜2: 「了解」「それな」「スタンプ」など中身のない相槌・挨拶
    - 3〜5: 日常の雑談、ちょっとした予定合わせ、近況報告
    - 6〜8: 試験・進路・研究の相談、重要な約束
@@ -19,6 +20,7 @@ ANALYSIS_PROMPT = """以下のLINEの会話ログを分析し、指定のJSONフ
 
 【出力フォーマット】
 {{
+  "timestamp": "YYYY-MM-DD HH:MM:SS",
   "sender_id": "...",
   "text": "...",
   "past_reply": "...",
@@ -64,6 +66,9 @@ def process_dialogue_chunk(chunk_text, tokenizer, model, threshold=3):
     result = json.loads(match.group(0))
   except json.JSONDecodeError:
     return None
+
+  if not result.get("timestamp"):
+    result["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
   score = result.get("importance", 1)
 
