@@ -1,6 +1,7 @@
 import json
 import re
 import torch
+from datetime import datetime
 
 ANALYSIS_PROMPT = """以下のLINEの会話ログを分析し、指定のJSONフォーマットのみを出力してください。前置きや解説、マークダウンの装飾記法は一切含めないでください。
 
