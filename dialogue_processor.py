@@ -3,32 +3,39 @@ import json
 import re
 import torch
 
-EXTRACT_ALL_PROMPT = """以下のLINEの会話ログ全体を読み、記録に残すべき【重要なエピソード・予定の約束・決定事項】を要約して抽出してください。
+EXTRACT_ALL_PROMPT = """以下のLINE会話ログから、後から参照すべき【話題・予定・出来事】のまとまりを抽出してJSON配列で出力してください。
 
 【会話ログ】
 {dialogue}
 
-【抽出ルール】
-1. 発言を1行ずつ細切れに抜き出すのではなく、一連の会話で「何が決まったか・何が起きたか」を1つのエピソードとして要約してください。
-2. 単なる挨拶、相槌、雑談（「なんだろ」「やったりしましょう」等の単文）は除外してください。
-3. 抽出する各要素のキー：
-   - timestamp: その話題が話された日時 ("YYYY-MM-DD HH:MM:SS" 形式。時刻のみなら会話内の日付と合体させる)
-   - sender_id: 会話相手の分類 ("friend", "parent", "professor", "other" のいずれか)
-   - text: 決定事項や出来事の客観的な要約（30〜60文字程度）
-   - past_reply: その話題に対する「自分」の発言（口調模倣用、なければ空文字）
-   - importance: 重要度（3〜10の整数）
-4. 出力は必ず以下の「JSON配列形式」のみで行ってください。
+【抽出の定義】
+- text: 会話全体から「何が決まったか・何について話していたか」を客観的にまとめた要約（相手の発言のコピペは禁止）
+- past_reply: その話題に対する「自分」の発言（口調模倣に使える特徴的な返信を1つ選ぶ）
+- timestamp: その話題が話された日時 (YYYY-MM-DD HH:MM:SS)
+- sender_id: 相手の分類 ("friend", "parent", "professor", "other")
+- importance: 重要度（3〜10）
 
-【出力フォーマット】
+【出力フォーマット例】
+ログ例:
+2026.04.10 金曜日
+18:00 友人: 来週の金曜、ご飯行かない？
+18:02 自分: 行こ行こ！焼肉がいいな
+18:05 友人: おっけー予約しとくわ
+
+出力例:
 [
   {{
-    "timestamp": "YYYY-MM-DD HH:MM:SS",
-    "sender_id": "...",
-    "text": "...",
-    "past_reply": "...",
-    "importance": 整数
+    "timestamp": "2026-04-10 18:00:00",
+    "sender_id": "friend",
+    "text": "来週金曜日に友人と焼肉に行く約束をした",
+    "past_reply": "行こ行こ！焼肉がいいな",
+    "importance": 5
   }}
 ]
+
+【出力上の厳格なルール】
+1. 相槌や中身のない雑談だけの話題は無視してください。
+2. 出力はマークダウン記法や解説を含めず、JSONの配列 `[...]` のみを出力してください。
 """
 
 
@@ -39,7 +46,7 @@ def extract_memories_from_log(full_text, tokenizer, model, min_importance=3):
       {
           "role": "system",
           "content": (
-              "あなたは対話ログから有益な記憶を網羅的に抽出し、正確なJSON配列のみを出力するデータ処理エンジンです。"
+              "あなたは対話ログからエピソードを要約抽出し、JSON配列のみを出力するエンジンです。"
           ),
       },
       {"role": "user", "content": prompt},
@@ -53,7 +60,7 @@ def extract_memories_from_log(full_text, tokenizer, model, min_importance=3):
   with torch.no_grad():
     outputs = model.generate(
         **inputs,
-        max_new_tokens=1024,  # トークン数を増やして途切れを防止
+        max_new_tokens=1024,
         do_sample=False,
     )
 
@@ -61,7 +68,6 @@ def extract_memories_from_log(full_text, tokenizer, model, min_importance=3):
       outputs[0][inputs.input_ids.shape[1] :], skip_special_tokens=True
   )
 
-  # JSON配列 [ ... ] の抽出を試みる
   match = re.search(r"\[.*\]", response, re.DOTALL)
   extracted_list = None
 
@@ -71,9 +77,8 @@ def extract_memories_from_log(full_text, tokenizer, model, min_importance=3):
     except json.JSONDecodeError:
       pass
 
-  # もし末尾が途切れてパース失敗した場合、最後の完全なオブジェクトまでを救済
+  # 末尾途切れ救済
   if extracted_list is None:
-    # 完全に閉じた最後の } までを取得して ] で閉じる
     last_bracket = response.rfind("}")
     first_bracket = response.find("[")
     if first_bracket != -1 and last_bracket != -1:
