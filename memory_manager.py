@@ -13,7 +13,7 @@ class MemoryManager:
         if not os.path.exists(self.filepath) or os.path.getsize(self.filepath)==0:
             return []
         try:
-            with open(self.filepath, "r", encodeing="utf-8") as f:
+            with open(self.filepath, "r", encoding="utf-8") as f:
                 return json.load(f)
         except json.JSONDecodeError:
             return []
