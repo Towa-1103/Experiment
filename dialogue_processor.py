@@ -1,43 +1,44 @@
+from datetime import datetime
 import json
 import re
 import torch
-from datetime import datetime
 
-ANALYSIS_PROMPT = """以下のLINEの会話ログを分析し、指定のJSONフォーマットのみを出力してください。前置きや解説、マークダウンの装飾記法は一切含めないでください。
+EXTRACT_ALL_PROMPT = """以下のLINEの会話ログ全体を分析し、記憶としてデータベースに記録すべき重要なエピソード・約束・決定事項をすべて抽出してください。
 
 【会話ログ】
 {dialogue}
 
-【判定ルール】
-1. timestamp: 会話ログから日付・時刻を読み取り "YYYY-MM-DD HH:MM:SS" 形式で出力（年が不明なら2026年、時刻のみなら日付を補完、完全に不明なら空文字）
-2. sender_id: 会話相手を推測して分類 ("friend", "parent", "professor", "other" のいずれか)
-3. text: この会話で決まったことや話した内容の客観的要約（30〜60文字程度）
-4. past_reply: 会話内での「自分」の発言（口調模倣用、なければ空文字）
-5. importance: 記憶の重要度（1〜10の整数）
-   - 1〜2: 「了解」「それな」「スタンプ」など中身のない相槌・挨拶
-   - 3〜5: 日常の雑談、ちょっとした予定合わせ、近況報告
-   - 6〜8: 試験・進路・研究の相談、重要な約束
-   - 9〜10: 人生の重大事、深刻な相談
+【抽出・判定ルール】
+1. 中身のない相槌（「それな」「了解」「スタンプ」等）や単なる挨拶・薄い雑談は【完全に無視】してください。
+2. 記憶すべき事象ごとに、以下のキーを持つ辞書を作成してください：
+   - timestamp: 会話から読み取れる日時 ("YYYY-MM-DD HH:MM:SS" 形式。時刻のみなら会話内の日付と組み合わせ、不明なら空文字)
+   - sender_id: 相手の属性 ("friend", "parent", "professor", "other" のいずれか)
+   - text: 客観的な要約（30〜60文字程度）
+   - past_reply: その時の「自分」の発言（口調模倣用、なければ空文字）
+   - importance: 重要度（3〜10の整数。3未満の取るに足らない会話は含めないこと）
+3. 抽出結果を「JSONの配列（リスト）」形式のみで出力してください。前置きや解説、マークダウン記法は含めないでください。記憶すべき内容が1つもない場合は空の配列 `[]` を出力してください。
 
 【出力フォーマット】
-{{
-  "timestamp": "YYYY-MM-DD HH:MM:SS",
-  "sender_id": "...",
-  "text": "...",
-  "past_reply": "...",
-  "importance": 整数
-}}
+[
+  {{
+    "timestamp": "YYYY-MM-DD HH:MM:SS",
+    "sender_id": "...",
+    "text": "...",
+    "past_reply": "...",
+    "importance": 整数
+  }}
+]
 """
 
 
-def process_dialogue_chunk(chunk_text, tokenizer, model, threshold=3):
-  """会話ブロックを分析し、重要度が閾値以上ならJSONデータを返し、未満ならNoneを返す関数"""
-  prompt = ANALYSIS_PROMPT.format(dialogue=chunk_text.strip())
+def extract_memories_from_log(full_text, tokenizer, model, min_importance=3):
+  """会話ログ全体から重要なエピソードのみを一括抽出し、辞書のリストとして返す関数"""
+  prompt = EXTRACT_ALL_PROMPT.format(dialogue=full_text.strip())
   messages = [
       {
           "role": "system",
           "content": (
-              "あなたは対話テキストを分析して正確なJSONのみを出力するデータ処理エンジンです。"
+              "あなたは対話ログから有益な記憶を網羅的に抽出し、正確なJSON配列のみを出力するデータ処理エンジンです。"
           ),
       },
       {"role": "user", "content": prompt},
@@ -51,7 +52,7 @@ def process_dialogue_chunk(chunk_text, tokenizer, model, threshold=3):
   with torch.no_grad():
     outputs = model.generate(
         **inputs,
-        max_new_tokens=256,
+        max_new_tokens=512,  # 複数件抽出できるようにトークン数を広めに確保
         do_sample=False,
     )
 
@@ -59,21 +60,28 @@ def process_dialogue_chunk(chunk_text, tokenizer, model, threshold=3):
       outputs[0][inputs.input_ids.shape[1] :], skip_special_tokens=True
   )
 
-  match = re.search(r"\{.*\}", response, re.DOTALL)
+  # [ ... ] の配列部分を正規表現で抽出
+  match = re.search(r"\[.*\]", response, re.DOTALL)
   if not match:
-    return None
+    return []
 
   try:
-    result = json.loads(match.group(0))
+    extracted_list = json.loads(match.group(0))
   except json.JSONDecodeError:
-    return None
+    return []
 
-  if not result.get("timestamp"):
-    result["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+  if not isinstance(extracted_list, list):
+    return []
 
-  score = result.get("importance", 1)
+  valid_memories = []
+  now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-  if score < threshold:
-    return None
+  for item in extracted_list:
+    score = item.get("importance", 1)
+    if score >= min_importance:
+      # timestampが欠落している場合の安全策
+      if not item.get("timestamp"):
+        item["timestamp"] = now_str
+      valid_memories.append(item)
 
-  return result
+  return valid_memories
