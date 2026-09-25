@@ -47,10 +47,10 @@ class MemoryManager:
 
             return added_count
 
-        def _save(self):
-            #memories.jsonに書き出し
-            with open(self.filepath, "w", encoding="utf-8") as f:
-                json.dump(self.memories, f, ensure_ascii=False, indent=2)
+    def _save(self):
+        #memories.jsonに書き出し
+        with open(self.filepath, "w", encoding="utf-8") as f:
+            json.dump(self.memories, f, ensure_ascii=False, indent=2)
 
-        def get_all(self):
-            return self.memories
+    def get_all(self):
+        return self.memories
