@@ -5,6 +5,10 @@ import os
 class MemoryManager:
 
     def __init__(self, filepath="memories.json"):
+        self.filepath = filepath
+        self.memories = self._load()
+
+    def _load(self):
         #memories.jsonを読み込む
         if not os.path.exists(self.filepath) or os.path.getsize(self.filepath)==0:
             return []
