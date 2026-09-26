@@ -1,6 +1,7 @@
 from datetime import datetime
 import json
 import re
+import time
 from google import genai
 
 EXTRACT_ALL_PROMPT = """あなたは対話ログから有益な記憶を網羅的かつ高精度に抽出する専門エンジンです。
