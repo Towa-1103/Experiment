@@ -44,22 +44,43 @@ Markdown（```json など）や説明文は一切含めず、純粋な `[` で�
 
 
 def extract_memories_with_gemini(
-    raw_log, api_key, default_sender="friend", min_importance=3
+    raw_log,
+    api_key,
+    default_sender="friend",
+    min_importance=3,
+    max_retries=3,
 ):
-  """Gemini API を使用して会話ログから記憶を高精度に抽出する"""
+  """Gemini API を使用して会話ログから記憶を高精度に抽出する（503自動リトライ付き）"""
   client = genai.Client(api_key=api_key)
-
   prompt = EXTRACT_ALL_PROMPT.format(dialogue=raw_log.strip())
 
+  response_text = None
+  for attempt in range(1, max_retries + 1):
+    try:
+      response = client.models.generate_content(
+          model="gemini-3.8-flash",
+          contents=prompt,
+          config={"response_mime_type": "application/json"},
+      )
+      response_text = response.text
+      break  # 成功したらループを抜ける
+    except Exception as e:
+      print(f"  [試行 {attempt}/{max_retries}] API混雑/エラー: {e}")
+      if attempt < max_retries:
+        wait_sec = attempt * 5  # 5秒、10秒と待機を延ばす
+        print(f"  -> {wait_sec}秒待機して再試行します...")
+        time.sleep(wait_sec)
+      else:
+        print("  -> 最大再試行回数を超えたためスキップします")
+        return []
+
+  if not response_text:
+    return []
+
   try:
-    response = client.models.generate_content(
-        model="gemini-3.8-flash",
-        contents=prompt,
-        config={"response_mime_type": "application/json"},
-    )
-    extracted_list = json.loads(response.text)
+    extracted_list = json.loads(response_text)
   except Exception as e:
-    print(f"Gemini API 呼び出しエラー: {e}")
+    print(f"JSONパースエラー: {e}")
     return []
 
   if not isinstance(extracted_list, list):
@@ -73,7 +94,6 @@ def extract_memories_with_gemini(
       if not item.get("timestamp"):
         item["timestamp"] = now_str
 
-      # 相手の名前が入っていない、または誤って「自分」になっている場合の安全策
       sender = item.get("sender_id", "").strip()
       if not sender or sender == "自分":
         item["sender_id"] = default_sender
