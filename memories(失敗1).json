@@ -1,0 +1,245 @@
+[
+  {
+    "timestamp": "2025-11-25 15:39:00",
+    "sender_id": "friend",
+    "text": "12月3日に顔合わせをやるらしい",
+    "past_reply": "やったりましょう",
+    "importance": 8,
+    "id": 1,
+    "created_at": "2026-09-26 00:25:31"
+  },
+  {
+    "timestamp": "2025-12-03 12:30:00",
+    "sender_id": "friend",
+    "text": "友人Aは自分が遅刻して髪とひげを整えていない状態で会社に向かっていることを話した。",
+    "past_reply": "まあ大丈夫だろ",
+    "importance": 4,
+    "id": 2,
+    "created_at": "2026-09-26 00:27:44"
+  },
+  {
+    "timestamp": "2026-04-01 12:45:00",
+    "sender_id": "friend",
+    "text": "パスワードを間違えて入力した結果、アカウントが退学状態になっていた可能性があることを確認した",
+    "past_reply": "たしかにそうだわ",
+    "importance": 8,
+    "id": 3,
+    "created_at": "2026-09-26 00:28:23"
+  },
+  {
+    "timestamp": "2026-04-06 12:20:00",
+    "sender_id": "friend",
+    "text": "今日の15時から企業面接があり、顔合わせを忘れており、Professorに土下座メールを送ることになった。",
+    "past_reply": "がんばれよ",
+    "importance": 7,
+    "id": 4,
+    "created_at": "2026-09-26 00:29:37"
+  },
+  {
+    "timestamp": "2026-04-09 12:12:00",
+    "sender_id": "friend",
+    "text": "4月15日に何か予定があることを確認した",
+    "past_reply": "何も言われてないかな",
+    "importance": 7,
+    "id": 5,
+    "created_at": "2026-09-26 00:30:20"
+  },
+  {
+    "timestamp": "2026-04-09 12:12:00",
+    "sender_id": "friend",
+    "text": "4月15日に何か予定があることを確認し、何も告知されていない",
+    "past_reply": "何も言われてないかな",
+    "importance": 6,
+    "id": 6,
+    "created_at": "2026-09-26 00:33:47"
+  },
+  {
+    "timestamp": "2026-06-08 16:38:00",
+    "sender_id": "friend",
+    "text": "ナジアのアプリは2日で2000ユーザーになった。心理テストアプリについて話した。",
+    "past_reply": "使いやすいっすよ",
+    "importance": 6,
+    "id": 7,
+    "created_at": "2026-09-26 00:34:45"
+  },
+  {
+    "timestamp": "2026-07-01 12:03:00",
+    "sender_id": "自分",
+    "text": "ランクマ夜でもいい？",
+    "past_reply": "全然いつでも",
+    "importance": 6,
+    "id": 8,
+    "created_at": "2026-09-26 00:41:12"
+  },
+  {
+    "timestamp": "2026-08-11 08:12:00",
+    "sender_id": "friend",
+    "text": "今日の夜カラオケに行く約束をした",
+    "past_reply": "たのしめ！！",
+    "importance": 6,
+    "id": 9,
+    "created_at": "2026-09-26 00:42:08"
+  },
+  {
+    "timestamp": "2026-09-19 13:24:00",
+    "sender_id": "friend",
+    "text": "来週の木曜日と金曜日の話があり、大学での作業を計画した",
+    "past_reply": "だから",
+    "importance": 6,
+    "id": 10,
+    "created_at": "2026-09-26 00:42:42"
+  },
+  {
+    "timestamp": "2025-11-25 15:39:00",
+    "sender_id": "友人A",
+    "text": "12月3日に顔合わせがあり、全員参加予定",
+    "past_reply": "やったりましょう",
+    "importance": 7,
+    "id": 11,
+    "created_at": "2026-09-26 00:42:58"
+  },
+  {
+    "timestamp": "2025-12-03 12:11:00",
+    "sender_id": "friendA",
+    "text": "時間ギリギリで髪とひげが整っていない",
+    "past_reply": "ころしてくれ",
+    "importance": 6,
+    "id": 12,
+    "created_at": "2026-09-26 00:43:19"
+  },
+  {
+    "timestamp": "2026-04-06 12:20:00",
+    "sender_id": "friendA",
+    "text": "今日の15時から企業面接があり、Professorに土下座メールを送る予定",
+    "past_reply": "がんばれよ",
+    "importance": 6,
+    "id": 13,
+    "created_at": "2026-09-26 00:44:19"
+  },
+  {
+    "timestamp": "2026-04-08 09:33:00",
+    "sender_id": "友人A",
+    "text": "知り合いAが鍵を開けていて、今日何かあったのか?",
+    "past_reply": "ありがとうすぎる",
+    "importance": 6,
+    "id": 14,
+    "created_at": "2026-09-26 00:44:25"
+  },
+  {
+    "timestamp": "2026-06-09 11:34:00",
+    "sender_id": "friend",
+    "text": "12時頃に会う予定で確認した",
+    "past_reply": "かしこまりました",
+    "importance": 3,
+    "id": 15,
+    "created_at": "2026-09-26 00:45:43"
+  },
+  {
+    "timestamp": "2026-06-10 12:19:00",
+    "sender_id": "自分",
+    "text": "林田匠の曲を聴いてみて、更新頻度も整理しよう",
+    "past_reply": "更新頻度終わり散らかしてるけど",
+    "importance": 6,
+    "id": 16,
+    "created_at": "2026-09-26 00:45:59"
+  },
+  {
+    "timestamp": "2026-06-11 12:34:00",
+    "sender_id": "自分",
+    "text": "友人Aと紫陽花を見に行く約束をした",
+    "past_reply": "いいね",
+    "importance": 6,
+    "id": 17,
+    "created_at": "2026-09-26 00:46:21"
+  },
+  {
+    "timestamp": "2026-06-16 21:42:00",
+    "sender_id": "友人A",
+    "text": "ゲチでアンデッド君の調子がいい",
+    "past_reply": "今ブロすたやってる",
+    "importance": 3,
+    "id": 18,
+    "created_at": "2026-09-26 00:46:44"
+  },
+  {
+    "timestamp": "2026-06-17 21:49:00",
+    "sender_id": "自分",
+    "text": "仕事のストレスから解放され、明日は暇な予定だ",
+    "past_reply": "明日は暇",
+    "importance": 6,
+    "id": 19,
+    "created_at": "2026-09-26 00:46:56"
+  },
+  {
+    "timestamp": "2026-06-18 16:56:00",
+    "sender_id": "友人A",
+    "text": "新モードをプレイする予定で、23時前に帰るので一緒にプレイ可",
+    "past_reply": "いいよ",
+    "importance": 6,
+    "id": 20,
+    "created_at": "2026-09-26 00:47:14"
+  },
+  {
+    "timestamp": "2026-06-19 15:13:00",
+    "sender_id": "friendA",
+    "text": "もうプロ探索者になった。最後のモンスターでゲロが出た。",
+    "past_reply": "あつ",
+    "importance": 6,
+    "id": 21,
+    "created_at": "2026-09-26 00:47:43"
+  },
+  {
+    "timestamp": "2026-06-20 14:00:00",
+    "sender_id": "自分",
+    "text": "パラボラリメイクされつつある",
+    "past_reply": "おーがんばれ",
+    "importance": 3,
+    "id": 22,
+    "created_at": "2026-09-26 00:47:54"
+  },
+  {
+    "timestamp": "2026-06-21 09:08:00",
+    "sender_id": "自分",
+    "text": "ラピスラズリリメイクも面白かった",
+    "past_reply": "良かった",
+    "importance": 4,
+    "id": 23,
+    "created_at": "2026-09-26 00:49:02"
+  },
+  {
+    "timestamp": "2026-06-23 22:50:00",
+    "sender_id": "自分",
+    "text": "Appleミュージックのない曲の歌詞について話した",
+    "past_reply": "そうそう",
+    "importance": 6,
+    "id": 24,
+    "created_at": "2026-09-26 00:49:19"
+  },
+  {
+    "timestamp": "2026-06-24 18:42:00",
+    "sender_id": "自分",
+    "text": "びーりあスクショ交換について確認し、友人から許可を得た",
+    "past_reply": "さんきゅー",
+    "importance": 6,
+    "id": 25,
+    "created_at": "2026-09-26 00:49:25"
+  },
+  {
+    "timestamp": "2026-06-25 12:12:00",
+    "sender_id": "friend",
+    "text": "友人Aがモーションを取る",
+    "past_reply": "またやりましょう",
+    "importance": 3,
+    "id": 26,
+    "created_at": "2026-09-26 00:50:40"
+  },
+  {
+    "timestamp": "2026-06-26 17:36:00",
+    "sender_id": "自分",
+    "text": "今日の夜遅くまでいけるが、明日は何もなさそう",
+    "past_reply": "応援ブロスタか",
+    "importance": 6,
+    "id": 27,
+    "created_at": "2026-09-26 00:50:51"
+  }
+]
