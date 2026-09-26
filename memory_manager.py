@@ -18,34 +18,30 @@ class MemoryManager:
         except json.JSONDecodeError:
             return []
 
-    def add_memories(self, new_items):
-        #重複を排除しながら新しい記憶を追記保存する
-        if not new_items:
-            return 0
+    def is_duplicate(self, new_item):
+      """同一日時かつ同一テキストの場合のみ重複とみなす"""
+      for existing in self.memories:
+        # 日時だけでなく、要約内容（text）まで一致しているかチェック
+        same_time = existing.get("timestamp") == new_item.get("timestamp")
+        same_text = existing.get("text") == new_item.get("text")
 
-        existing_keys = { # timestampとtextの組み合わせが一致するものは除外
-            (m.get("timestamp"), m.get("text")) for m in self.memories
-        }
+        if same_time and same_text:
+          return True
+      return False
 
-        current_max_id = max([m.get("id", 0) for m in self.memories], default=0)
+    def add_memories(self, new_memories):
+      added_count = 0
+      for item in new_memories:
+        if self.is_duplicate(item):
+          continue
 
-        added_count = 0
-        for item in new_items:
-            key = (item.get("timestamp"), item.get("text"))
-            if key not in existing_keys:
-                current_max_id += 1
-                item["id"] = current_max_id
-                #追加日時を記録
-                item["created_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        item["id"] = self._get_next_id()
+        item["created_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.memories.append(item)
+        added_count += 1
 
-                self.memories.append(item)
-                existing_keys.add(key)
-                added_count += 1
-
-            if added_count > 0:
-                self._save()
-
-            return added_count
+      self._save()
+      return added_count
 
     def _save(self):
         #memories.jsonに書き出し
