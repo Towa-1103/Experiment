@@ -1,44 +1,46 @@
 from datetime import datetime
 import json
 import math
-from google import genai
 import numpy as np
-
+from sentence_transformers import SentenceTransformer
 
 class MemoryRetriever:
 
-  def __init__(self, memory_file="memories.json", api_key=None):
+  def __init__(self, memory_file="memories.json", model_name="intfloat/multilingual-e5-small"):
     self.memory_file = memory_file
-    self.client = genai.Client(api_key=api_key) if api_key else None
     self.memories = self._load_memories()
     self.embeddings_cache = {}
+    
+    # ローカルのEmbeddingモデルを初期化（初回のみダウンロード）
+    self.model = SentenceTransformer(model_name)
 
-  def _load_memories(self): # memories.jsonを読込
+  def _load_memories(self):
     try:
       with open(self.memory_file, "r", encoding="utf-8") as f:
         return json.load(f)
     except Exception:
       return []
 
-  def _get_embedding(self, text: str) -> np.ndarray: #テキストをGeminiに送り、数値ベクトルに変換
-    if text in self.embeddings_cache: # 既にキャッシュにあればAPIを使わずそれを返す
+  def _get_embedding(self, text: str) -> np.ndarray:
+    if text in self.embeddings_cache:
       return self.embeddings_cache[text]
 
-    response = self.client.models.embed_content(
-        model="text-embedding-004",
-        contents=text,
-    )
-    vec = np.array(response.embedding.values, dtype=np.float32)
-    norm = np.linalg.norm(vec)
-    if norm > 0:
-      vec = vec / norm
+    # e5モデルの推奨フォーマット（クエリ用）
+    # ※記憶側のテキストも同じ形式でベクトル化して問題ありません
+    formatted_text = f"query: {text}"
+    
+    # Sentence-Transformersによるベクトル化
+    vec = self.model.encode(formatted_text, normalize_embeddings=True)
+    
+    # numpy配列として保存（float32）
+    vec = np.array(vec, dtype=np.float32)
     self.embeddings_cache[text] = vec
     return vec
 
-  def _calc_cosine_similarity(self, vec1: np.ndarray, vec2: np.ndarray) -> float: #Semantic(コサイン類似度)を計算
+  def _calc_cosine_similarity(self, vec1: np.ndarray, vec2: np.ndarray) -> float:
     return float(np.dot(vec1, vec2))
 
-  def _calc_recency_score(self, timestamp_str: str, decay_rate: float = 0.01) -> float: # Recencyを計算
+  def _calc_recency_score(self, timestamp_str: str, decay_rate: float = 0.01) -> float:
     try:
       mem_date = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
     except ValueError:
@@ -52,34 +54,31 @@ class MemoryRetriever:
       delta_days = 0
     return math.exp(-decay_rate * delta_days)
 
-  def search(self, query: str, current_speaker: str, top_k: int = 3, mode: str = "4axis"): 
-    # 計算したSemantic, Recency, 設定されてるSender_id, Importanceを用いて上位k件を計算
+  def search(self, query: str, current_speaker: str, top_k: int = 3, mode: str = "4axis"):
     """
-    mode="4axis": 意味(0.40), 鮮度(0.15), 重要度(0.15), 話者(0.30) <- 提案手法
-    mode="3axis": 意味(0.50), 鮮度(0.25), 重要度(0.25), 話者(0.0)  <- 既存RAGのベースライン
+    mode="4axis": 提案手法。話者(0.30)を加味し、相手との文脈を維持する。
+    mode="3axis": 既存RAGのベースライン。話者(0.0)を無視し、意味・鮮度・重要度だけで検索。
     """
     if not self.memories:
       return []
 
-    # モードによる重みの切り替え
     if mode == "4axis":
       weights = {"semantic": 0.40, "speaker": 0.30, "recency": 0.15, "importance": 0.15}
     else:
-      # 話者の重みを 0 にし、既存RAGのように意味・鮮度・重要度だけで検索する
       weights = {"semantic": 0.50, "speaker": 0.0, "recency": 0.25, "importance": 0.25}
 
     query_vec = self._get_embedding(query)
     scored_results = []
 
-    for item in self.memories: # memories.josnの全記憶に対してループを回し、スコアを計算
-      text_vec = self._get_embedding(item.get("text", "")) 
-      sim_score = max(0.0, self._calc_cosine_similarity(query_vec, text_vec)) # クエリと記憶テキストの類似度
+    for item in self.memories:
+      text_vec = self._get_embedding(item.get("text", ""))
+      sim_score = max(0.0, self._calc_cosine_similarity(query_vec, text_vec))
       
-      speaker_score = 1.0 if item.get("sender_id") == current_speaker else 0.0 # 合致判定で 1 or 0
+      speaker_score = 1.0 if item.get("sender_id") == current_speaker else 0.0
       recency_score = self._calc_recency_score(item.get("timestamp", ""))
-      importance_score = min(max(item.get("importance", 5) / 10.0, 0.1), 1.0) # importanceの値を10で割り正規化
+      importance_score = min(max(item.get("importance", 5) / 10.0, 0.1), 1.0)
 
-      total_score = ( # 総合スコア計算
+      total_score = (
           weights["semantic"] * sim_score
           + weights["speaker"] * speaker_score
           + weights["recency"] * recency_score
