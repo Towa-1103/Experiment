@@ -13,15 +13,15 @@ class MemoryRetriever:
     self.memories = self._load_memories()
     self.embeddings_cache = {}
 
-  def _load_memories(self):
+  def _load_memories(self): # memories.jsonを読込
     try:
       with open(self.memory_file, "r", encoding="utf-8") as f:
         return json.load(f)
     except Exception:
       return []
 
-  def _get_embedding(self, text: str) -> np.ndarray:
-    if text in self.embeddings_cache:
+  def _get_embedding(self, text: str) -> np.ndarray: #テキストをGeminiに送り、数値ベクトルに変換
+    if text in self.embeddings_cache: # 既にキャッシュにあればAPIを使わずそれを返す
       return self.embeddings_cache[text]
 
     response = self.client.models.embed_content(
@@ -35,10 +35,10 @@ class MemoryRetriever:
     self.embeddings_cache[text] = vec
     return vec
 
-  def _calc_cosine_similarity(self, vec1: np.ndarray, vec2: np.ndarray) -> float:
+  def _calc_cosine_similarity(self, vec1: np.ndarray, vec2: np.ndarray) -> float: #Semantic(コサイン類似度)を計算
     return float(np.dot(vec1, vec2))
 
-  def _calc_recency_score(self, timestamp_str: str, decay_rate: float = 0.01) -> float:
+  def _calc_recency_score(self, timestamp_str: str, decay_rate: float = 0.01) -> float: # Recencyを計算
     try:
       mem_date = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
     except ValueError:
@@ -52,7 +52,8 @@ class MemoryRetriever:
       delta_days = 0
     return math.exp(-decay_rate * delta_days)
 
-  def search(self, query: str, current_speaker: str, top_k: int = 3, mode: str = "4axis"):
+  def search(self, query: str, current_speaker: str, top_k: int = 3, mode: str = "4axis"): 
+    # 計算したSemantic, Recency, 設定されてるSender_id, Importanceを用いて上位k件を計算
     """
     mode="4axis": 意味(0.40), 鮮度(0.15), 重要度(0.15), 話者(0.30) <- 提案手法
     mode="3axis": 意味(0.50), 鮮度(0.25), 重要度(0.25), 話者(0.0)  <- 既存RAGのベースライン
@@ -70,15 +71,15 @@ class MemoryRetriever:
     query_vec = self._get_embedding(query)
     scored_results = []
 
-    for item in self.memories:
-      text_vec = self._get_embedding(item.get("text", ""))
-      sim_score = max(0.0, self._calc_cosine_similarity(query_vec, text_vec))
+    for item in self.memories: # memories.josnの全記憶に対してループを回し、スコアを計算
+      text_vec = self._get_embedding(item.get("text", "")) 
+      sim_score = max(0.0, self._calc_cosine_similarity(query_vec, text_vec)) # クエリと記憶テキストの類似度
       
-      speaker_score = 1.0 if item.get("sender_id") == current_speaker else 0.0
+      speaker_score = 1.0 if item.get("sender_id") == current_speaker else 0.0 # 合致判定で 1 or 0
       recency_score = self._calc_recency_score(item.get("timestamp", ""))
-      importance_score = min(max(item.get("importance", 5) / 10.0, 0.1), 1.0)
+      importance_score = min(max(item.get("importance", 5) / 10.0, 0.1), 1.0) # importanceの値を10で割り正規化
 
-      total_score = (
+      total_score = ( # 総合スコア計算
           weights["semantic"] * sim_score
           + weights["speaker"] * speaker_score
           + weights["recency"] * recency_score
