@@ -2,17 +2,16 @@ from datetime import datetime
 import json
 import math
 import numpy as np
-from sentence_transformers import SentenceTransformer
 
 class MemoryRetriever:
 
-  def __init__(self, memory_file="memories.json", model_name="intfloat/multilingual-e5-small"):
+  def __init__(self,embed_model, memory_file="memories.json"):
     self.memory_file = memory_file
     self.memories = self._load_memories()
     self.embeddings_cache = {}
     
     # ローカルのEmbeddingモデルを初期化（初回のみダウンロード）
-    self.model = SentenceTransformer(model_name)
+    self.model = embed_model
 
   def _load_memories(self):
     try:

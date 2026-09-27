@@ -2,12 +2,12 @@ from retriever import MemoryRetriever
 
 class ResponseGenerator:
     # 外部（Colab）でロード済みの model と tokenizer を受け取る
-    def __init__(self, model, tokenizer, memory_file="memories.json"):
+    def __init__(self, model, tokenizer,embed_model, memory_file="memories.json"):
         self.model = model
         self.tokenizer = tokenizer
         
         # Retrieverの初期化 (内部でSentenceTransformerのみロードされます)
-        self.retriever = MemoryRetriever(memory_file=memory_file)
+        self.retriever = MemoryRetriever(embed_model=embed_model, memory_file=memory_file)
         
         self.score_threshold = 0.50
         self.max_memories = 2
