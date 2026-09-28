@@ -31,7 +31,7 @@ class ResponseGenerator:
             print(f"エラー: {self.memory_file} のフォーマットが不正です。")
             return []
 
-    def generate_reply(self, query: str, current_speaker: str, top_k: int = 2, score_threshold: float = 0.0) -> dict:
+    def generate_reply(self, query: str, current_speaker: str, top_k: int = 2, score_threshold: float = 0.83) -> dict:
         """
         スコア閾値(score_threshold)は、現在「足切りライン」を探るため一時的に0.0（全通し）に設定。
         ログのスコアを見て、あとで 0.82 など適切な数値に変更。
