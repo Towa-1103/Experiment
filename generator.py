@@ -1,88 +1,151 @@
-from retriever import MemoryRetriever
+import json
+import torch
+from sentence_transformers import util
 
 class ResponseGenerator:
-    # 外部（Colab）でロード済みの model と tokenizer を受け取る
-    def __init__(self, model, tokenizer,embed_model, memory_file="memories.json"):
+    def __init__(self, model, tokenizer, embed_model, memory_file="memories.json"):
+        """
+        Colabの別セルでロードしたモデルを受け取る（依存性の注入）
+        """
         self.model = model
         self.tokenizer = tokenizer
+        self.embed_model = embed_model
+        self.memory_file = memory_file
+        self.memories = self._load_memories()
         
-        # Retrieverの初期化 (内部でSentenceTransformerのみロードされます)
-        self.retriever = MemoryRetriever(embed_model=embed_model, memory_file=memory_file)
-        
-        self.score_threshold = 0.50
-        self.max_memories = 2
+        # 起動時にすべての記憶をベクトル化してメモリに保持（検索の高速化）
+        if self.memories:
+            memory_texts = [m.get("text", "") for m in self.memories]
+            self.memory_embeddings = self.embed_model.encode(memory_texts, convert_to_tensor=True)
+        else:
+            self.memory_embeddings = None
 
-    def _build_messages(self, current_speaker: str, query: str, memories: list) -> tuple:
-        """Qwenに渡すシステムプロンプトとチャット履歴を構築する"""
-        memory_texts = []
-        
-        for mem in memories:
-            if mem['total_score'] >= self.score_threshold:
-                m_data = mem['memory']
-                memory_texts.append(
-                    f"・日時: {m_data.get('timestamp')}\n"
-                    f"  要約: {m_data.get('text')}\n"
-                    f"  過去のあなたの返答例: {m_data.get('past_reply')}"
-                )
-            if len(memory_texts) >= self.max_memories:
-                break
-        
-        memory_context = "\n\n".join(memory_texts) if memory_texts else "（関連する記憶は見つかりませんでした）"
+    def _load_memories(self):
+        try:
+            with open(self.memory_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except FileNotFoundError:
+            print(f"警告: {self.memory_file} が見つかりません。記憶ゼロで開始します。")
+            return []
+        except json.JSONDecodeError:
+            print(f"エラー: {self.memory_file} のフォーマットが不正です。")
+            return []
 
-        system_prompt = f"""あなたはLINEのユーザー本人として、相手({current_speaker})からのメッセージに返信してください。
+    def generate_reply(self, query: str, current_speaker: str, top_k: int = 2, score_threshold: float = 0.0) -> dict:
+        """
+        スコア閾値(score_threshold)は、現在「足切りライン」を探るため一時的に0.0（全通し）に設定。
+        ログのスコアを見て、あとで 0.82 など適切な数値に変更。
+        """
+        used_texts = []
+        used_scores = []
+        used_past_replies = []
 
-【制約事項】
-1. 以下の「過去の記憶」に、現在の会話と関連する情報があれば踏まえて返答してください。
-2. 記憶が全く無関係（または「記憶なし」）の場合は、記憶のことは完全に無視して、自然に相槌や返答だけを行ってください。無理に話題に出してはいけません。
-3. 返答はLINEのチャットらしく、短く、口語体で出力してください。
-4. 「過去のあなたの返答例」がある場合、その口調やテンションを可能な限り模倣してください。
+        # ==========================================
+        # 1. 記憶の検索とスコア計算
+        # ==========================================
+        if self.memories and self.memory_embeddings is not None:
+            query_emb = self.embed_model.encode(query, convert_to_tensor=True)
+            cos_scores = util.cos_sim(query_emb, self.memory_embeddings)[0]
+            
+            scored_memories = []
+            for i, score in enumerate(cos_scores):
+                # ★ 4軸検索などで「特定の相手(current_speaker)」に絞る場合はここでif文を追加します
+                memory = self.memories[i]
+                scored_memories.append({
+                    "text": memory.get("text", ""),
+                    "past_reply": memory.get("past_reply", ""),
+                    "score": score.item()
+                })
+            
+            # スコアが高い順にソート
+            scored_memories = sorted(scored_memories, key=lambda x: x["score"], reverse=True)
+            
+            # 閾値(score_threshold)以上のものだけを残し、上位 top_k 件を取得
+            valid_memories = [m for m in scored_memories if m["score"] >= score_threshold][:top_k]
+            
+            used_texts = [m["text"] for m in valid_memories]
+            used_scores = [f"{m['score']:.4f}" for m in valid_memories]
+            used_past_replies = [m["past_reply"] for m in valid_memories if m.get("past_reply")]
 
-【過去の記憶】
-{memory_context}"""
+        # ==========================================
+        # 2. プロンプトの動的ルーティング
+        # ==========================================
+        if len(used_texts) > 0:
+            # 【パターンA】関連する記憶が見つかった場合
+            memory_context = "\n".join([f"- {t}" for t in used_texts])
+            past_reply_context = "\n".join([f"- {r}" for r in used_past_replies if r])
+            
+            system_prompt = (
+                "あなたは日本人です。必ず自然な日本語のみで返答してください。\n"
+                "あなたはユーザーの友人としてLINEで会話をしています。\n"
+                "以下の過去の記憶（文脈）と、あなたの過去の返答例を参考にして、相手のメッセージに自然に返信してください。\n\n"
+                f"【過去の記憶】\n{memory_context}\n\n"
+                f"【あなたの過去の返答例】\n{past_reply_context}\n\n"
+                "指示:\n"
+                "- LINEらしい短くカジュアルな口調を守ること。\n"
+                "- AIのような丁寧すぎる言葉遣い（「〜ですね」「私は〜」など）は禁止。\n"
+                "- 記憶にないことは適当にでっち上げず、自然に会話を繋ぐこと。"
+            )
+        else:
+            # 【パターンB】記憶がない（足切りされた）場合
+            system_prompt = (
+                "あなたは日本人です。必ず自然な日本語のみで返答してください。\n"
+                "あなたはユーザーの友人としてLINEで会話をしています。\n"
+                "現在、相手の話題に関する過去の記憶がありません。\n\n"
+                "指示:\n"
+                "- LINEらしい短くカジュアルな口調を守ること。\n"
+                "- AIのような丁寧すぎる言葉遣い（「〜ですね」「私は〜」など）は禁止。\n"
+                "- 話題がわからない場合は、「ごめん、それいつの話だっけ？」「ちょっと覚えてないかも」と自然に聞き返すか、適当に相槌を打つこと。"
+            )
 
+        # ==========================================
+        # 3. モデルが理解できるChatML形式へ変換
+        # ==========================================
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": query}
         ]
-        return messages, memory_texts
-
-    def generate_reply(self, query: str, current_speaker: str) -> dict:
-        # 1. 4軸検索の実行
-        search_results = self.retriever.search(
-            query=query, 
-            current_speaker=current_speaker, 
-            top_k=3, 
-            mode="4axis"
-        )
         
-        # 2. メッセージの構築
-        messages, used_memories = self._build_messages(current_speaker, query, search_results)
-        
-        # 3. プロンプトのテンプレーティング
-        text = self.tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
+        text_for_model = self.tokenizer.apply_chat_template(
+            messages, 
+            tokenize=False, 
             add_generation_prompt=True
         )
-        model_inputs = self.tokenizer([text], return_tensors="pt").to(self.model.device)
-        
-        # 4. 返答の生成
-        generated_ids = self.model.generate(
-            **model_inputs,
-            max_new_tokens=150,
-            temperature=0.7,
-            top_p=0.9,
-            repetition_penalty=1.05
-        )
-        
-        # 5. 出力テキストの抽出
+        model_inputs = self.tokenizer([text_for_model], return_tensors="pt").to(self.model.device)
+
+        # ==========================================
+        # 4. 返答の生成（ストップトークン漏れ対策済み）
+        # ==========================================
+        terminators = [
+            self.tokenizer.eos_token_id,
+            self.tokenizer.convert_tokens_to_ids("<|im_end|>")
+        ]
+
+        with torch.no_grad():
+            generated_ids = self.model.generate(
+                **model_inputs,
+                max_new_tokens=150,
+                temperature=0.7,
+                top_p=0.9,
+                repetition_penalty=1.05,
+                pad_token_id=self.tokenizer.eos_token_id,
+                eos_token_id=terminators # ここでハルシネーション（文字列漏れ）を強制ストップ
+            )
+
         generated_ids = [
             output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)
         ]
         reply = self.tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        
+
+        # ==========================================
+        # 5. 後処理
+        # ==========================================
+        reply = reply.replace("forgettable_id_", "").strip()
+        reply = reply.split("\n")[0]  # LINEを想定し、余計な改行以降はカットする
+
         return {
-            "reply": reply.strip(),
-            "used_memories_count": len(used_memories),
-            "used_memories_texts": used_memories
+            "reply": reply,
+            "used_memories_count": len(used_texts),
+            "used_memories_texts": used_texts,
+            "used_memories_scores": used_scores
         }
