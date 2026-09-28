@@ -1,4 +1,4 @@
 # データベース・出力ファイル
-memories.json
-experiment_log.csv
+*.json
+*.csv
 課題.txt
