@@ -121,7 +121,6 @@ class ResponseGenerator:
             
             used_texts = [m["text"] for m in valid_memories]
             used_scores = [f"{m['score']:.4f}" for m in valid_memories]
-            # ※past_replyの抽出処理は完全に削除しました
 
         # --- 2. ルールの取得 ---
         rule = self.person_rules.get(current_speaker, self.person_rules.get("default"))
@@ -130,20 +129,35 @@ class ResponseGenerator:
 
         # --- 3. システムプロンプトの構築 ---
         system_base = (
+            "あなたは日本人です。必ず自然な日本語のみを使用して返答してください。中国語（簡体字・繁体字）や英語などの他言語は【絶対に】混入させないでください。\n"
             "あなたはLINEのチャットボットとしてユーザーと対話します。\n"
-            "以下の【相手との関係性と口調の絶対ルール】を必ず守って返答してください。\n\n"
+            "以下の【相手との関係性と口調の絶対ルール】を常に厳守してください。\n\n"
             f"【相手との関係性と口調の絶対ルール】\n"
             f"相手: {current_speaker}\n"
             f"関係性: {relation}\n"
-            f"口調の指示: {tone_rules}\n\n"
-            "※上記の口調の指示は、記憶の有無に関わらず常に厳守し、絶対に英語や不自然な言語を混ぜないでください。\n"
+            f"口調の指示: {tone_rules}\n"
         )
 
         if len(used_texts) > 0:
+            # 記憶がヒットした場合（通常のRAG挙動）
             memory_context = "\n".join([f"- {t}" for t in used_texts])
-            system_prompt = system_base + f"\n【過去の記憶】\n以下の出来事を踏まえて返答してください。\n{memory_context}"
+            system_prompt = (
+                system_base +
+                f"\n【過去の記憶】\n{memory_context}\n\n"
+                "指示:\n"
+                "- 上記の記憶を踏まえて、話題に自然に返信してください。\n"
+                "- 記憶に書かれていない具体的な事実や予定を勝手にでっち上げないでください。"
+            )
         else:
-            system_prompt = system_base + "\n【過去の記憶】\n特になし。今の話題に自然に返答してください。"
+            # 記憶が足切りされて0件になった場合（ハルシネーション完全防止モード）
+            system_prompt = (
+                system_base +
+                "\n【過去の記憶】\n現在、相手の話題に関する過去の記憶データがありません。\n\n"
+                "指示:\n"
+                "- 知ったかぶりや、存在しないエピソード、架空の作品名（映画やゲームなど）のでっち上げは【絶対に】やめてください。\n"
+                "- 過去の出来事やおすすめを聞かれたが記憶がない場合は、必ず「ごめん、それいつの話だっけ？」「最近観てないから分からないな」など、知らないことを素直に伝える返答にしてください。\n"
+                "- 一般的な話題への相槌であっても、具体的な固有名詞を勝手に創作しないでください。"
+            )
 
         messages = [
             {"role": "system", "content": system_prompt},
