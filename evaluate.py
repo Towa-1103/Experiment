@@ -28,7 +28,9 @@ def run_experiment(
         query=query, 
         current_speaker=speaker,
         top_k=top_k,
-        score_threshold=score_threshold
+        score_threshold=score_threshold,
+        scoring_method=scoring_method,   # 3軸か4軸かの指定を渡す
+        scoring_weights=scoring_weights  # 重みの設定を渡す
     )
 
     # 生成の結果をそれぞれ格納
