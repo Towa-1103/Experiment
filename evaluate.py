@@ -4,6 +4,7 @@ from datetime import datetime
 
 def run_experiment(
     bot, # 1.エンジン本体
+    target_model: str, #検証するLLM
     query: str, # 2.AIに投げるテキスト
     speaker: str, # 3.対話相手のID
     score_threshold: float = 0.83, # 4.類似度スコアの閾値
@@ -12,7 +13,7 @@ def run_experiment(
     scoring_weights: dict = None, # 7.各要素の重み比率
     experiment_note: str = "テスト", # 8.自由記述欄
     csv_filename: str = "experiment_log_with_score.csv" # 9.出力先のCSVファイル名
-):
+    ):
     """
     RAGの検索条件を動的に変更しながらAIの生成結果をテストし、CSVにログを記録する関数。
     """
@@ -49,19 +50,22 @@ def run_experiment(
         print("【検索・使用された記憶】\n" + score_details)
     print("-" * 50)
 
-    # CSVへの記録
+    #CSVへ記録
     file_exists = os.path.isfile(csv_filename)
     with open(csv_filename, mode="a", encoding="utf-8-sig", newline="") as f:
         writer = csv.writer(f)
         if not file_exists:
+            # ヘッダーの2列目に "Model" を追加（末尾の空文字は削除して整理しました）
             writer.writerow([
-                "Timestamp", "Experiment_Note", "Scoring_Method", "Weights", "Threshold", 
+                "Timestamp", "Model", "Experiment_Note", "Scoring_Method", "Weights", "Threshold", 
                 "Speaker", "Query", "AI_Reply", "Used_Memories_Count", "Score_Breakdown"
             ])
         
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # target_model（"Qwen", "Llama", "calm3" など）をデータ列に追加
         writer.writerow([
-            timestamp, experiment_note, scoring_method, str(scoring_weights), score_threshold,
+            timestamp, target_model, experiment_note, scoring_method, str(scoring_weights), score_threshold,
             speaker, query, reply, used_count, score_details
         ])
 
