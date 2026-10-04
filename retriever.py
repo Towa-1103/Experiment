@@ -38,6 +38,8 @@ class MemoryRetriever:
 
   def _calc_cosine_similarity(self, vec1: np.ndarray, vec2: np.ndarray) -> float:
     raw_sim = float(np.dot(vec1, vec2))
+
+    print(f"🔥[テスト] raw_sim={raw_sim:.4f} / この関数は確実に呼ばれています！")
     
     # 2. ★ベースラインの設定（足きりライン）
     baseline = 0.80
