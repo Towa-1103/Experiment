@@ -39,8 +39,8 @@ class MemoryRetriever:
   def _calc_cosine_similarity(self, vec1: np.ndarray, vec2: np.ndarray) -> float:
     raw_sim = float(np.dot(vec1, vec2))
     
-    # 2. ★ベースラインの設定
-    baseline = 0.40
+    # 2. ★ベースラインの設定（足きりライン）
+    baseline = 0.80
     
     # 3. 足切り処理
     if raw_sim <= baseline:
@@ -48,6 +48,7 @@ class MemoryRetriever:
     
     # 4. 正規化処理
     normalized_sim = (raw_sim - baseline) / (1.0 - baseline)
+    sharp_sim = normalized_sim ** 2 #2乗し、さらにコントラストを表現
     
     return min(1.0, normalized_sim) #念のため
 
