@@ -83,13 +83,13 @@ class ResponseGenerator:
         query: str, 
         current_speaker: str, 
         top_k: int = 2, 
-        score_threshold: float = 1.35, # 4軸専用の厳しい閾値にデフォルトを変更
+        score_threshold: float = 0.8, # 4軸専用の厳しい閾値にデフォルトを変更
         scoring_method: str = "4-axis", 
         scoring_weights: dict = None
     ) -> dict:
         
         if scoring_weights is None:
-            scoring_weights = {"relevance": 1.0, "recency": 0.2, "importance": 0.1, "sender_id": 0.3} # 話者の重みを0.3に調整
+            scoring_weights = {"relevance": 0.65, "recency": 0.1, "importance": 0.1, "sender_id": 0.15} # 話者の重みを0.3に調整
 
         used_texts = []
         used_scores = []
@@ -110,7 +110,6 @@ class ResponseGenerator:
                 else:
                     norm_relevance = (raw_relevance - baseline) / (1.0 - baseline)
                     norm_relevance = min(1.0, norm_relevance)
-                    norm_relevance = norm_relevance ** 2  # ここで強力なコントラストをつける
                     
                 # 変換後のスコアを関連度として重み掛け算
                 final_score = norm_relevance * scoring_weights.get("relevance", 1.0)
