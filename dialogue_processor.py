@@ -92,6 +92,7 @@ def extract_memories_with_gemini(
 
   for item in extracted_list:
     if item.get("importance", 1) >= min_importance:
+      item["importance"] = float(item.get("importance", 1)) / 10.0
       if not item.get("timestamp"):
         item["timestamp"] = now_str
 

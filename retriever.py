@@ -37,7 +37,19 @@ class MemoryRetriever:
     return vec
 
   def _calc_cosine_similarity(self, vec1: np.ndarray, vec2: np.ndarray) -> float:
-    return float(np.dot(vec1, vec2))
+    raw_sim = float(np.dot(vec1, vec2))
+    
+    # 2. ★ベースラインの設定
+    baseline = 0.40
+    
+    # 3. 足切り処理
+    if raw_sim <= baseline:
+        return 0.0
+    
+    # 4. 正規化処理
+    normalized_sim = (raw_sim - baseline) / (1.0 - baseline)
+    
+    return min(1.0, normalized_sim) #念のため
 
   def _calc_recency_score(self, timestamp_str: str, decay_rate: float = 0.01) -> float:
     try:

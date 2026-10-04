@@ -65,8 +65,11 @@ class ResponseGenerator:
             return 0.0
 
     def _calc_importance_score(self, memory):
-        importance = memory.get("importance", 5)
-        return float(importance - 1.0) / 9.0
+        importance = memory.get("importance", 0.5)
+        try: # float型として読み込む
+            return float(importance)
+        except ValueError:
+            return 0.1
 
     def _calc_sender_score(self, memory, current_speaker):
         memory_sender = memory.get("sender_id", "")
