@@ -110,7 +110,7 @@ class ResponseGenerator:
                 else:
                     norm_relevance = (raw_relevance - baseline) / (1.0 - baseline)
                     norm_relevance = min(1.0, norm_relevance)
-                    norm_relevance = norm_relevance ** 3  # ここで強力なコントラストをつける
+                    norm_relevance = norm_relevance ** 2  # ここで強力なコントラストをつける
                     
                 # 変換後のスコアを関連度として重み掛け算
                 final_score = norm_relevance * scoring_weights.get("relevance", 1.0)
