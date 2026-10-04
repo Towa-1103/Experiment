@@ -103,7 +103,6 @@ class ResponseGenerator:
             for i, memory in enumerate(self.memories):
                 raw_relevance = cos_scores[i].item()
                 
-                # --- フィルター処理（足切り・正規化・3乗）を追加 ---
                 baseline = 0.80
                 if raw_relevance <= baseline:
                     norm_relevance = 0.0
@@ -111,29 +110,40 @@ class ResponseGenerator:
                     norm_relevance = (raw_relevance - baseline) / (1.0 - baseline)
                     norm_relevance = min(1.0, norm_relevance)
                     
-                # 変換後のスコアを関連度として重み掛け算
-                final_score = norm_relevance * scoring_weights.get("relevance", 1.0)
+               rel_weighted = norm_relevance * scoring_weights.get("relevance", 1.0)
                 
+                rec_weighted = 0.0
+                imp_weighted = 0.0
                 if scoring_method in ["3-axis", "4-axis"]:
                     recency = self._calc_recency_score(memory)
                     importance = self._calc_importance_score(memory)
-                    final_score += recency * scoring_weights.get("recency", 0.0)
-                    final_score += importance * scoring_weights.get("importance", 0.0)
+                    rec_weighted = recency * scoring_weights.get("recency", 0.0)
+                    imp_weighted = importance * scoring_weights.get("importance", 0.0)
                     
+                spk_weighted = 0.0
                 if scoring_method == "4-axis":
                     sender = self._calc_sender_score(memory, current_speaker)
-                    final_score += sender * scoring_weights.get("sender_id", 0.0)
+                    spk_weighted = sender * scoring_weights.get("sender_id", 0.0)
+
+                # 総合スコアの合算
+                final_score = rel_weighted + rec_weighted + imp_weighted + spk_weighted
+
+                # ★ 内訳を分かりやすい文字列として作成
+                breakdown_str = f"{final_score:.4f} (関連:{rel_weighted:.4f}, 直近:{rec_weighted:.4f}, 重要:{imp_weighted:.4f}, 話者:{spk_weighted:.4f})"
 
                 scored_memories.append({
                     "text": memory.get("text", ""),
-                    "score": final_score
+                    "score": final_score,
+                    "breakdown": breakdown_str # 内訳テキストを辞書に保存
                 })
             
+            # ソートと足切り
             scored_memories = sorted(scored_memories, key=lambda x: x["score"], reverse=True)
             valid_memories = [m for m in scored_memories if m["score"] >= score_threshold][:top_k]
             
+            # 呼び出し元に返すスコア情報を「内訳付きの文字列」に変更
             used_texts = [m["text"] for m in valid_memories]
-            used_scores = [f"{m['score']:.4f}" for m in valid_memories]
+            used_scores = [m["breakdown"] for m in valid_memories]
 
         # --- 2. ルールの取得 ---
         rule = self.person_rules.get(current_speaker, self.person_rules.get("default"))
