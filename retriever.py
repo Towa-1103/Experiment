@@ -48,9 +48,9 @@ class MemoryRetriever:
     
     # 4. 正規化処理
     normalized_sim = (raw_sim - baseline) / (1.0 - baseline)
-    sharp_sim = normalized_sim ** 2 #2乗し、さらにコントラストを表現
+    sharp_sim = normalized_sim ** 3 #2乗し、さらにコントラストを表現
     
-    return min(1.0, normalized_sim) #念のため
+    return min(1.0, sharp_sim) #念のため
 
   def _calc_recency_score(self, timestamp_str: str, decay_rate: float = 0.01) -> float:
     try:
