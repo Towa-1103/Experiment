@@ -110,7 +110,7 @@ class ResponseGenerator:
                     norm_relevance = (raw_relevance - baseline) / (1.0 - baseline)
                     norm_relevance = min(1.0, norm_relevance)
                     
-               rel_weighted = norm_relevance * scoring_weights.get("relevance", 1.0)
+                rel_weighted = norm_relevance * scoring_weights.get("relevance", 1.0)
                 
                 rec_weighted = 0.0
                 imp_weighted = 0.0
