@@ -5,10 +5,11 @@ import torch
 from sentence_transformers import util
 
 class ResponseGenerator:
-    def __init__(self, model, tokenizer, embed_model, memory_file="memories.json", rules_file="person_rules.json"):
+    def __init__(self, model, tokenizer, embed_model, memory_file="memories.json", rules_file="person_rules.json", reference_date=None):
         self.model = model
         self.tokenizer = tokenizer
         self.embed_model = embed_model
+        self.reference_date = reference_date
         
         # 1. エピソード記憶の読み込みとベクトル化（既存の高速化ロジックを維持）
         self.memory_file = memory_file
@@ -57,7 +58,10 @@ class ResponseGenerator:
             return 0.0
         try:
             memory_date = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
-            now = datetime.now()
+            if self.reference_date:
+                now = self.reference_date
+            else:
+                now = datetime.now()
             delta = now - memory_date
             days_passed = max(0, delta.days)
             return math.exp(-0.0038 * days_passed)
